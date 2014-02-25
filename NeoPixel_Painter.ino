@@ -144,6 +144,7 @@ void setup()
       b = 255;
       if (found = bmpProcess(root, infile, NULL, &b))
       {
+        showFrameNumber(nFrames);
         // b modified to safe max
         nFrames++;
         if (b < minBrightness)
@@ -168,6 +169,8 @@ void setup()
     // by that name will simply be clobbered, IT DOES NOT ASK).
     for (i=0; i<nFrames; i++) 
     {
+      showFrameNumber(nFrames - 1 - i);
+ 
       sprintf(infile , "frame%03d.bmp", i);
       sprintf(outfile, "frame%03d.tmp", i);
       b = minBrightness;
@@ -193,7 +196,6 @@ void setup()
       }
     } 
     while(found);
-
   } // end startupTrigger test
 
 #ifdef ENCODERSTEPS
@@ -222,6 +224,8 @@ void setup()
     {
       maxLPS = n;
     }
+    
+    showFrameNumber(nFrames - 1 - i);
   }
 
   if (maxLPS > 400)
@@ -246,7 +250,7 @@ void setup()
 
   // Timer0 interrupt is disabled for smoother playback.
   // This means delay(), millis(), etc. won't work after this.
-  TIMSK0 = 0;
+  //!!! TIMSK0 = 0;
 }
 
 // Startup error handler; doesn't return, doesn't run loop(), just stops.
@@ -322,11 +326,14 @@ void loop()
 
 void showFrameNumber(int frame)
 {
+  // dark
+  memset(sdBuf, 0, N_LEDS * 3);
+
   int count = frame % N_LEDS;
 
   for (int index = 0; index < N_LEDS; index++)
   {
-    sdBuf[index * 3] = index < = frame ? 10 : 0;
+    sdBuf[index * 3] = index <= frame ? 10 : 0;
   }
 
   show();
