@@ -42,8 +42,8 @@
 #define CARD_SELECT   10 // SD card select pin (some shields use #4, not 10)
 #define LED_PIN        6 // NeoPixels connect here
 #define SPEED         A2 // Speed-setting dial
-#define BRIGHTNESS    A0 // Brightness-setting dial
-#define TRIGGER       A1 // Playback trigger pin
+#define BRIGHTNESS    A1 // Brightness-setting dial
+#define TRIGGER       6 // Playback trigger pin
 #define NEXT_FRAME_BUTTON 5 // Button for next frame
 #define CURRENT_MAX 1500 // Max current from power supply (mA)
 // The software does its best to limit the LED brightness to a level that's
