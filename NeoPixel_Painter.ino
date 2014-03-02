@@ -109,7 +109,7 @@ void setup()
   Serial.print(F("Initializing SD card..."));
   if(!card.init(SPI_FULL_SPEED, CARD_SELECT))
   {
-    error(F("failed. Things to check:\n"
+    error(1, F("failed. Things to check:\n"
       "* is a card is inserted?\n"
       "* Is your wiring correct?\n"
       "* did you edit CARD_SELECT to match the SD shield or module?"));
@@ -119,7 +119,7 @@ void setup()
 
   if (!volume.init(&card))
   {
-    error(F("Could not find FAT16/FAT32 partition.\n"
+    error(2, F("Could not find FAT16/FAT32 partition.\n"
       "Make sure the card is formatted."));
   }
 
@@ -254,10 +254,15 @@ void setup()
 }
 
 // Startup error handler; doesn't return, doesn't run loop(), just stops.
-static void error(const __FlashStringHelper *ptr)
+static void error(int errorNumber, const __FlashStringHelper *ptr)
 {
   Serial.println(ptr); // Show message
-  for (;;); // and hang
+  for (;;)
+  {
+   showFrameNumber(errorNumber);
+   delay(1000);
+  }
+  // and hang
 }
 
 // PLAYBACK LOOP
@@ -272,12 +277,12 @@ void loop()
   sprintf(infile, "frame%03d.tmp", frame);
   if (!tmp.open(&root, infile, O_RDONLY))
   {
-    error(F("Could not open NeoPixel tempfile for input"));
+    error(3, F("Could not open NeoPixel tempfile for input"));
   }
 
   if (!tmp.contiguousRange(&firstBlock, &lastBlock))
   {
-    error(F("NeoPixel tempfile is not contiguous"));
+    error(4, F("NeoPixel tempfile is not contiguous"));
   }
 
   // Number of blocks needs to be calculated from file size, not the
