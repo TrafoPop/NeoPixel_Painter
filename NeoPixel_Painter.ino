@@ -45,7 +45,7 @@
 #define BRIGHTNESS    A1 // Brightness-setting dial
 #define TRIGGER       4 // Playback trigger pin
 #define NEXT_FRAME_BUTTON 5 // Button for next frame
-#define CURRENT_MAX 1500 // Max current from power supply (mA)
+#define CURRENT_MAX 2000 // Max current from power supply (mA)
 // The software does its best to limit the LED brightness to a level that's
 // manageable by the power supply. 144 NeoPixels at full brightness can
 // draw about 10 Amps(!), while the UBEC (buck converter) sold by Adafruit
@@ -170,7 +170,7 @@ void setup()
     for (i=0; i<nFrames; i++) 
     {
       showFrameNumber(nFrames - 1 - i);
- 
+
       sprintf(infile , "frame%03d.bmp", i);
       sprintf(outfile, "frame%03d.tmp", i);
       b = minBrightness;
@@ -224,7 +224,7 @@ void setup()
     {
       maxLPS = n;
     }
-    
+
     showFrameNumber(nFrames - 1 - i);
   }
 
@@ -259,8 +259,8 @@ static void error(int errorNumber, const __FlashStringHelper *ptr)
   Serial.println(ptr); // Show message
   for (;;)
   {
-   showFrameNumber(errorNumber);
-   delay(1000);
+    showFrameNumber(errorNumber);
+    delay(1000);
   }
   // and hang
 }
@@ -719,13 +719,13 @@ static void show(void)
     "sbiw %[count], 1"         "\n\t"
     "brne head20_%="          "\n"
 : 
-  [port]  "+e" (port),
+    [port]  "+e" (port),
   [byte]  "+r" (b),
   [bit]   "+r" (bit),
   [next]  "+r" (next),
   [count] "+w" (i)
 : 
-  [ptr]    "e" (ptr),
+    [ptr]    "e" (ptr),
   [hi]     "r" (hi),
   [lo]     "r" (lo));
 
