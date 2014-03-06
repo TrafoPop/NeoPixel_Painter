@@ -45,7 +45,7 @@
 #define BRIGHTNESS    A1 // Brightness-setting dial
 #define TRIGGER       4 // Playback trigger pin
 #define NEXT_FRAME_BUTTON 5 // Button for next frame
-#define CURRENT_MAX 2000 // Max current from power supply (mA)
+#define CURRENT_MAX 4000 // Max current from power supply (mA)
 // The software does its best to limit the LED brightness to a level that's
 // manageable by the power supply. 144 NeoPixels at full brightness can
 // draw about 10 Amps(!), while the UBEC (buck converter) sold by Adafruit
