@@ -144,7 +144,7 @@ void setup()
       b = 255;
       if (found = bmpProcess(root, infile, NULL, &b))
       {
-        showFrameNumber(nFrames);
+        showFrameNumber(nFrames, 0);
         // b modified to safe max
         nFrames++;
         if (b < minBrightness)
@@ -169,7 +169,7 @@ void setup()
     // by that name will simply be clobbered, IT DOES NOT ASK).
     for (i=0; i<nFrames; i++) 
     {
-      showFrameNumber(nFrames - 1 - i);
+      showFrameNumber(nFrames - 1 - i, 1);
 
       sprintf(infile , "frame%03d.bmp", i);
       sprintf(outfile, "frame%03d.tmp", i);
@@ -225,7 +225,7 @@ void setup()
       maxLPS = n;
     }
 
-    showFrameNumber(nFrames - 1 - i);
+    showFrameNumber(nFrames - 1 - i, 2);
   }
 
   if (maxLPS > 400)
@@ -259,8 +259,8 @@ static void error(int errorNumber, const __FlashStringHelper *ptr)
   Serial.println(ptr); // Show message
   for (;;)
   {
-    showFrameNumber(errorNumber);
-    delay(1000);
+    showFrameNumber(errorNumber, 1);
+    delay(500);
   }
   // and hang
 }
@@ -316,7 +316,7 @@ void loop()
 
   while (!nextFrameButton)
   {
-    showFrameNumber(frame);
+    showFrameNumber(frame, 2);
 
     nextFrameButton = digitalRead(NEXT_FRAME_BUTTON);
     if (!nextFrameButton)
@@ -329,7 +329,7 @@ void loop()
   }
 }
 
-void showFrameNumber(int frame)
+void showFrameNumber(int frame, int offset)
 {
   // dark
   memset(sdBuf, 0, N_LEDS * 3);
@@ -338,11 +338,11 @@ void showFrameNumber(int frame)
 
   for (int index = 0; index < N_LEDS; index++)
   {
-    sdBuf[index * 3] = index <= frame ? 10 : 0;
+    sdBuf[index * 3 + offset] = index <= frame ? 10 : 0;
   }
 
   show();
-  delay(1000);
+  delay(500);
 
   // dark
   memset(sdBuf, 0, N_LEDS * 3);
