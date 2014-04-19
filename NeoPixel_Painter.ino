@@ -38,12 +38,12 @@
 
 // CONFIGURABLE STUFF
 
-#define N_LEDS       144 // Max value is 170 (fits one SD card block)
-#define CARD_SELECT   10 // SD card select pin (some shields use #4, not 10)
-#define LED_PIN        6 // NeoPixels connect here
-#define SPEED         A2 // Speed-setting dial
-#define BRIGHTNESS    A1 // Brightness-setting dial
-#define TRIGGER       4 // Playback trigger pin
+#define N_LEDS 144 // Max value is 170 (fits one SD card block)
+#define CARD_SELECT 10 // SD card select pin (some shields use #4, not 10)
+#define LED_PIN 6 // NeoPixels connect here
+#define SPEED A2 // Speed-setting dial
+#define BRIGHTNESS A1 // Brightness-setting dial
+#define START_BUTTON 4 // Playback trigger pin
 #define NEXT_FRAME_BUTTON 5 // Button for next frame
 #define CURRENT_MAX 4000 // Max current from power supply (mA)
 // The software does its best to limit the LED brightness to a level that's
@@ -91,8 +91,8 @@ void setup()
   SdFile tmp;
   uint32_t lastBlock;
 
-  digitalWrite(TRIGGER, HIGH); // Enable pullup on trigger button
-  startupTrigger = digitalRead(TRIGGER); // Poll startup trigger ASAP
+  digitalWrite(START_BUTTON, HIGH); // Enable pullup on trigger button
+  startupTrigger = digitalRead(START_BUTTON); // Poll startup trigger ASAP
   digitalWrite(NEXT_FRAME_BUTTON, HIGH); // Enable pullup on the next frame button
 
   Serial.begin(57600);
@@ -144,7 +144,7 @@ void setup()
       b = 255;
       if (found = bmpProcess(root, infile, NULL, &b))
       {
-        showFrameNumber(nFrames, 0);
+        showFrameNumber(nFrames, 0, false);
         // b modified to safe max
         nFrames++;
         if (b < minBrightness)
@@ -167,16 +167,15 @@ void setup()
     // the image(s) from BMP to a raw representation of NeoPixel data
     // (this outputs the file(s) 'frameNNN.tmp' -- any existing file
     // by that name will simply be clobbered, IT DOES NOT ASK).
-    for (i=0; i<nFrames; i++) 
+    for (i=0; i<nFrames && digitalRead(START_BUTTON) == HIGH; i++) 
     {
-      showFrameNumber(nFrames - 1 - i, 1);
+      showFrameNumber(nFrames - 1 - i, 1, false);
 
       sprintf(infile , "frame%03d.bmp", i);
       sprintf(outfile, "frame%03d.tmp", i);
       b = minBrightness;
       bmpProcess(root, infile, outfile, &b);
     }
-    while (digitalRead(TRIGGER) == LOW); // Wait for button release
   } 
   else 
   {
@@ -195,7 +194,7 @@ void setup()
         tmp.close();
       }
     } 
-    while(found);
+    while (found);
   } // end startupTrigger test
 
 #ifdef ENCODERSTEPS
@@ -225,7 +224,7 @@ void setup()
       maxLPS = n;
     }
 
-    showFrameNumber(nFrames - 1 - i, 2);
+    showFrameNumber(nFrames - 1 - i, 2, false);
   }
 
   if (maxLPS > 400)
@@ -251,6 +250,10 @@ void setup()
   // Timer0 interrupt is disabled for smoother playback.
   // This means delay(), millis(), etc. won't work after this.
   //!!! TIMSK0 = 0;
+
+  dark();
+
+  while (digitalRead(START_BUTTON) == LOW); // Wait for button release
 }
 
 // Startup error handler; doesn't return, doesn't run loop(), just stops.
@@ -259,7 +262,7 @@ static void error(int errorNumber, const __FlashStringHelper *ptr)
   Serial.println(ptr); // Show message
   for (;;)
   {
-    showFrameNumber(errorNumber, 1);
+    showFrameNumber(errorNumber, 1, true);
     delay(500);
   }
   // and hang
@@ -304,7 +307,7 @@ void loop()
   // Wait for trigger button
   do
   {
-    playButton = digitalRead(TRIGGER);
+    playButton = digitalRead(START_BUTTON);
     nextFrameButton = digitalRead(NEXT_FRAME_BUTTON);
   }
   while (playButton && nextFrameButton);
@@ -312,24 +315,43 @@ void loop()
   if (!playButton)
   {
     showFrame();
+    
+    do
+    {
+      nextFrameButton = digitalRead(NEXT_FRAME_BUTTON);
+    }
+    while (!nextFrameButton);
   }
 
   while (!nextFrameButton)
   {
-    showFrameNumber(frame, 2);
+    showFrameNumber(frame, 2, true);
 
     nextFrameButton = digitalRead(NEXT_FRAME_BUTTON);
     if (!nextFrameButton)
     {
-      if (++frame >= nFrames)
+      if (digitalRead(START_BUTTON))
       {
-        frame = 0;
+        if (++frame >= nFrames)
+        {
+          frame = 0;
+        }
+      }
+      else
+      {
+        if (frame <= 0)
+        {
+          frame = nFrames;
+        }
+        frame--;
       }
     } 
   }
+  
+  while (digitalRead(START_BUTTON) == LOW); // Wait for button release
 }
 
-void showFrameNumber(int frame, int offset)
+void showFrameNumber(int frame, int offset, boolean wait)
 {
   // dark
   memset(sdBuf, 0, N_LEDS * 3);
@@ -338,13 +360,19 @@ void showFrameNumber(int frame, int offset)
 
   for (int index = 0; index < N_LEDS; index++)
   {
-    sdBuf[index * 3 + offset] = index <= frame ? 10 : 0;
+    sdBuf[index * 3 + offset] = (index < frame && (!wait || offset!=1)) ? 10 : (index <= frame ? 255 : 0);
   }
 
   show();
-  delay(500);
+  if (wait)
+  {
+    delay(500);
+    dark();
+  }
+}
 
-  // dark
+void dark()
+{
   memset(sdBuf, 0, N_LEDS * 3);
   show();
 }
@@ -382,8 +410,10 @@ void showFrame()
     // Display current line
     show();
 
-    if (stopFlag)
+    if (stopFlag || digitalRead(NEXT_FRAME_BUTTON) == LOW)
     { 
+      dark();
+      
       // Break when done
       break;
     }
@@ -391,7 +421,7 @@ void showFrame()
     if (++block >= nBlocks)
     {
       // Past last block?
-      if (digitalRead(TRIGGER) == HIGH)
+      if (digitalRead(START_BUTTON) == HIGH)
       {
         // Trigger released?
 
@@ -550,7 +580,7 @@ boolean bmpProcess(SdFile  &path, char *inName, char *outName, uint8_t *brightne
         memset(sdBuf, 0, N_LEDS * 3); // Clear left/right pixels
       }
 
-      for (row=0; row<bmpHeight; row++)
+      for (row = 0; row<bmpHeight; row++)
       {
         // For each row in image...
         Serial.write('.');
@@ -574,7 +604,7 @@ boolean bmpProcess(SdFile  &path, char *inName, char *outName, uint8_t *brightne
         sum = 0L;
         ditherRow = (uint8_t *)&dither[row & 0x0F]; // Dither values for row
         ledPtr = ledStartPtr;
-        for (column=0; column<columns; column++)
+        for (column = 0; column < columns; column++)
         {
           // For each column...
 
