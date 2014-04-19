@@ -68,16 +68,16 @@
 
 #define OVERHEAD 150 // Extra microseconds for loop processing, etc.
 
-uint8_t           sdBuf[512],  // One SD block (also for NeoPixel color data)
+uint8_t sdBuf[512],  // One SD block (also for NeoPixel color data)
 pinMask;     // NeoPixel pin bitmask
-uint16_t          maxLPS,      // Max playback lines/sec
+uint16_t maxLPS,      // Max playback lines/sec
 nFrames = 0, // Total # of image files
-frame   = 0; // Current image # being painted
-uint32_t          firstBlock,  // First block # in temp working file
+frame = 0; // Current image # being painted
+uint32_t firstBlock,  // First block # in temp working file
 nBlocks;     // Number of blocks in file
-Sd2Card           card;        // SD card global instance (only one)
-SdVolume          volume;      // Filesystem global instance (only one)
-SdFile            root;        // Root directory (only one)
+Sd2Card card;        // SD card global instance (only one)
+SdVolume volume;      // Filesystem global instance (only one)
+SdFile root;        // Root directory (only one)
 volatile uint8_t *port;        // NeoPixel PORT register
 
 // INITIALIZATION
@@ -140,6 +140,13 @@ void setup()
     minBrightness = 255;
     do 
     {
+      if (digitalRead(START_BUTTON) == LOW)
+      {
+        nFrames = 0;
+        
+        break;
+      }
+      
       sprintf(infile, "frame%03d.bmp", nFrames);
       b = 255;
       if (found = bmpProcess(root, infile, NULL, &b))
@@ -167,7 +174,7 @@ void setup()
     // the image(s) from BMP to a raw representation of NeoPixel data
     // (this outputs the file(s) 'frameNNN.tmp' -- any existing file
     // by that name will simply be clobbered, IT DOES NOT ASK).
-    for (i=0; i<nFrames && digitalRead(START_BUTTON) == HIGH; i++) 
+    for (i = 0; i < nFrames && digitalRead(START_BUTTON) == HIGH; i++) 
     {
       showFrameNumber(nFrames - 1 - i, 1, false);
 
@@ -177,25 +184,13 @@ void setup()
       bmpProcess(root, infile, outfile, &b);
     }
   } 
-  else 
+  
+  if (!nFrames)
   {
     // Button held -- use existing data
-
-    do
-    { // Scan for files to get nFrames
-      sprintf(infile, "frame%03d.tmp", nFrames);
-      if (found = tmp.open(&root, infile, O_RDONLY)) 
-      {
-        if (tmp.contiguousRange(&firstBlock, &lastBlock)) 
-        {
-          nFrames++;
-        }
-
-        tmp.close();
-      }
-    } 
-    while (found);
-  } // end startupTrigger test
+    countFrames();
+  }
+  // end startupTrigger test
 
 #ifdef ENCODERSTEPS
   // To use a rotary encoder rather than timer, connect one output
@@ -208,7 +203,7 @@ void setup()
   // file to estimate block read time (+5% margin) and max playback
   // lines/sec.  Not all SD cards perform the same.  This makes sure a
   // reasonable speed limit is used.
-  for (i=0; i<nFrames; i++)
+  for (i = 0; i < nFrames; i++)
   {
     // Scan all files
     sprintf(infile, "frame%03d.tmp", i);
@@ -315,7 +310,7 @@ void loop()
   if (!playButton)
   {
     showFrame();
-    
+
     do
     {
       nextFrameButton = digitalRead(NEXT_FRAME_BUTTON);
@@ -347,7 +342,7 @@ void loop()
       }
     } 
   }
-  
+
   while (digitalRead(START_BUTTON) == LOW); // Wait for button release
 }
 
@@ -360,7 +355,7 @@ void showFrameNumber(int frame, int offset, boolean wait)
 
   for (int index = 0; index < N_LEDS; index++)
   {
-    sdBuf[index * 3 + offset] = (index < frame && (!wait || offset!=1)) ? 10 : (index <= frame ? 255 : 0);
+    sdBuf[index * 3 + offset] = (index < frame && (!wait || offset!=1)) ? 10 : (index <= frame ? 100 : 0);
   }
 
   show();
@@ -413,7 +408,7 @@ void showFrame()
     if (stopFlag || digitalRead(NEXT_FRAME_BUTTON) == LOW)
     { 
       dark();
-      
+
       // Break when done
       break;
     }
@@ -764,3 +759,28 @@ static void show(void)
   // SD card block read provides ample time for latch!
 }
 
+void countFrames(void)
+{
+  char infile[13];
+  SdFile tmp;
+  uint32_t lastBlock;
+
+  while (true)
+  { // Scan for files to get nFrames
+    sprintf(infile, "frame%03d.tmp", nFrames);
+    if (tmp.open(&root, infile, O_RDONLY)) 
+    {
+      if (tmp.contiguousRange(&firstBlock, &lastBlock)) 
+      {
+        showFrameNumber(nFrames, 2, false);
+        nFrames++;
+      }
+
+      tmp.close();
+    }
+    else
+    {
+      break;
+    }
+  } 
+}
